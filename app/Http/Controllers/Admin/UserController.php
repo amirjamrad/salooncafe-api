@@ -14,7 +14,9 @@ use App\Http\Resources\Admin\UserResource;
 use App\Model\ActivityLog;
 use App\Model\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 
@@ -65,6 +67,16 @@ class UserController extends Controller
             return Response::errorResponse(401,ApiMessages::LOGIN_INVALID_USER_ERROR);
         }
         $token = $loginUserData->createToken('login-token')->plainTextToken;
+
+        if($request->boolean('remember'))
+        {
+            $rememberToken = Str::random(60);
+            $expiresAt = Carbon::now()->addDay();
+            $loginUserData->forceFill([
+                'remember_token' => \hash('sha256',$rememberToken ),
+                'remember_token_expires_at' => $expiresAt
+            ])->save();
+        }
         $loginUserData->makeHidden(['password']);
 
         return Response::successResponse(
@@ -77,6 +89,8 @@ class UserController extends Controller
         );
 
     }
+
+
     public function logout(Request $request){
         $request->user()->currentAccessToken()->delete();
         return Response::successResponse(
